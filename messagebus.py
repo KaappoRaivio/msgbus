@@ -1,11 +1,13 @@
 from __future__ import annotations
 from typing import List
 from threading import Thread
+import time
 
 class CustomThread(Thread):
     def __init__(self):
         super().__init__()
         self.do_run = True
+        self.daemon = True
     def stop(self):
         self.do_run = False
 
@@ -15,7 +17,12 @@ class MessageBus(CustomThread):
 
     @classmethod
     def getSingletonInstance(cls) -> MessageBus:
+        if cls.__inst is None:
+            cls.__inst = cls()
+
         return cls.__inst
+
+
 
     def __init__(self):
         super().__init__()
@@ -31,19 +38,18 @@ class MessageBus(CustomThread):
 
         self.start()
 
-    def addToRecipientList(self, instance, *instances):
-        if instance in self.recipent_list:
-            raise Exception(f"{instance} is already in the recipent list!")
-        else:
-            self.recipent_list.append(instance)
-
+    @classmethod
+    def addToRecipientList(cls, *instances):
+        self = cls.getSingletonInstance()
         for i in instances:
             if i in self.recipent_list:
                 raise Exception(f"{i} is already in the recipent list!")
             else:
                 self.recipent_list.append(i)
 
-    def deliverMessage(self, message: Message):
+    @classmethod
+    def deliverMessage(cls, message: Message):
+        self = cls.getSingletonInstance()
         # print(message)
         for i in self.recipent_list:
             try:
@@ -53,7 +59,10 @@ class MessageBus(CustomThread):
                 print(i)
                 raise e
 
-    def sendMessage(self, message: Message):
+    @classmethod
+    def sendMessage(cls, message: Message):
+        self = cls.getSingletonInstance()
+
         self.message_queue.append(message)
 
 
@@ -61,13 +70,16 @@ class MessageBus(CustomThread):
         while self.do_run:
 
             message: Message
+            time.sleep(0.001)
 
-            print(self.message_queue)
+            # print(self.message_queue)
             if self.message_queue:
                 message = self.message_queue.pop()
                 self.deliverMessage(message)
 
 class Recipient:
+    def __init__(self):
+        pass
     """Interface"""
     def onMessageReceived(self, message: Message):
         raise NotImplementedError("Class must implement this!")
